@@ -1,0 +1,82 @@
+---
+title: "hw10"
+output: html_document
+author: Blake_Underwood
+date: "2023-04-19"
+---
+
+```{r setup, include=FALSE}
+data = read.csv('https://raw.githubusercontent.com/yumouqiu/DS202-Spring2023/main/Practice/data/fars2016/accident.csv')
+View(data)
+```
+
+
+# are there some days of the week where more accidents happen than on others (use variable DAY_WEEK)?
+```{r}
+# Create a bar plot of the number of accidents for each day of the week
+ggplot(data, aes(x = factor(DAY_WEEK))) +
+  geom_bar() +
+  labs(x = "Day of the Week", y = "Number of Accidents")
+```
+
+# what time of the day do accidents happen (use variable HOUR)?
+```{r}
+ggplot(data %>% filter(HOUR >= 0 & HOUR <= 23), aes(x = HOUR)) +
+  geom_histogram(binwidth = 1, color = "black", fill = "blue") +
+  labs(x = "Hour of the Day", y = "Number of Accidents")
+```
+
+
+# what is the number of accidents with at least one drunk driver (use variable DRUNK_DR)?
+```{r}
+drunk_driver_count <- sum(data$DRUNK_DR >= 1)
+drunk_driver_count
+```
+# Connect to the person table. 
+```{r}
+person = read.csv('https://raw.githubusercontent.com/yumouqiu/DS202-Spring2023/main/Practice/data/fars2016/person.csv')
+```
+
+# Identify drivers (PER_TYP == 1, see fars manual ) and subset on them.
+```{r}
+drivers <- subset(person, PER_TYP == 1)
+head(drivers)
+```
+
+
+# Join accident and driver table (work out which variable(s) to use)
+```{r}
+# Join the data and drivers datasets on CASENUM
+new_data <- left_join(data, drivers %>% select(ST_CASE, SEX), by = "ST_CASE")
+
+# Select the DAY_WEEK, HOUR, and SEX columns
+new_data <- select(new_data, DAY_WEEK, HOUR, SEX)
+
+# make week days alphabetical
+new_data <- new_data %>%
+  mutate(DAY_WEEK = recode(DAY_WEEK,
+                           `1` = "Sunday",
+                           `2` = "Monday",
+                           `3` = "Tuesday",
+                           `4` = "Wednesday",
+                           `5` = "Thursday",
+                           `6` = "Friday",
+                           `7` = "Saturday"))
+head(new_data)
+```
+
+
+# Tally the number of accidents by day of the week (DAY_WEEK), hour of the day (HOUR) and gender (SEX). Visualize the results!
+```{r}
+# Tally the number of accidents by day of the week, hour of the day, and gender
+tallied_data <- new_data %>% filter(HOUR >= 0 & HOUR <= 23) %>%
+  group_by(DAY_WEEK, HOUR, SEX) %>%
+  summarize(num_accidents = n())
+
+# Create a bar plot of the results
+ggplot(tallied_data, aes(x = HOUR, y = num_accidents, fill = factor(SEX))) +
+  geom_col(position = "dodge") +
+  facet_wrap(~ DAY_WEEK, nrow = 2) +
+  labs(x = "Hour of Day", y = "Number of Accidents", fill = "Gender") +
+  scale_fill_manual(values = c("1" = "blue", "2" = "pink"), labels = c("1" = "Men", "2" = "Women"))
+```
